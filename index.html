@@ -1,0 +1,996 @@
+<title>Wakeru — 書類を、置くだけで分ける。</title>
+<meta name="description" content="Google Drive に眠るファイルを、分類・重複チェック・優先度づけで自動的に仕分けます。まずはウェイトリストにご登録ください。">
+<style>
+  :root {
+    --paper: #EDEAE2;
+    --paper-deep: #DDD8CC;
+    --ink: #20241F;
+    --ink-soft: #4B5049;
+    --ledger-line: #B9AF9A;
+    --index-teal: #1F4C43;
+    --index-teal-ink: #EDEAE2;
+    --stamp: #9C3B2E;
+    --card: #FFFFFF;
+
+    --font-display: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+    --font-body: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
+    --font-mono: "SF Mono", "Menlo", ui-monospace, monospace;
+
+    --space-1: 0.5rem;
+    --space-2: 1rem;
+    --space-3: 1.5rem;
+    --space-4: 2.5rem;
+    --space-5: 4rem;
+    --space-6: 6rem;
+
+    --content-max: 960px;
+    --tab-width: 88px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  a { color: inherit; }
+
+  :focus-visible {
+    outline: 3px solid var(--index-teal);
+    outline-offset: 3px;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* ---------- Layout shell ---------- */
+
+  .shell {
+    display: grid;
+    grid-template-columns: var(--tab-width) 1fr;
+  }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+  }
+
+  .tabnav {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-1);
+    border-right: 1px solid var(--ledger-line);
+  }
+
+  @media (max-width: 900px) {
+    .tabnav {
+      display: none;
+    }
+  }
+
+  .tabnav a {
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    padding: var(--space-2) var(--space-1);
+    border-left: 3px solid transparent;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .tabnav a[aria-current="true"] {
+    color: var(--index-teal);
+    border-color: var(--index-teal);
+    background: var(--paper-deep);
+  }
+
+  .tabnav a:hover {
+    color: var(--index-teal);
+  }
+
+  main { min-width: 0; }
+
+  .wrap {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: 0 var(--space-3);
+  }
+
+  section {
+    padding: var(--space-6) 0;
+    border-bottom: 1px solid var(--ledger-line);
+  }
+
+  section:last-of-type { border-bottom: none; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    color: var(--index-teal);
+    text-transform: uppercase;
+  }
+
+  /* ---------- Header ---------- */
+
+  header.site {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--ledger-line);
+  }
+
+  @media (max-width: 480px) {
+    header.site {
+      flex-wrap: wrap;
+    }
+    header.site .btn {
+      font-size: 0.82rem;
+      padding: 0.6em 1em;
+      white-space: nowrap;
+    }
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .logo small {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    color: var(--ink-soft);
+    font-weight: 400;
+    margin-top: 2px;
+  }
+
+  .btn {
+    display: inline-block;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.7em 1.4em;
+    background: var(--index-teal);
+    color: var(--index-teal-ink);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.15s ease;
+  }
+
+  .btn:hover { background: #163b34; }
+  .btn:active { transform: translateY(1px); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--ledger-line);
+  }
+  .btn-ghost:hover { background: var(--paper-deep); }
+
+  /* ---------- Hero ---------- */
+
+  .hero {
+    padding-top: var(--space-5);
+    padding-bottom: var(--space-5);
+  }
+
+  .hero h1 {
+    font-size: clamp(2rem, 4.5vw, 3.1rem);
+    margin: var(--space-2) 0 var(--space-3);
+  }
+
+  .hero .lead {
+    max-width: 52ch;
+    color: var(--ink-soft);
+    font-size: 1.05rem;
+    margin-bottom: var(--space-4);
+  }
+
+  .waitlist-form {
+    display: flex;
+    gap: var(--space-1);
+    max-width: 480px;
+    flex-wrap: wrap;
+  }
+
+  .waitlist-form .field {
+    flex: 1 1 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
+  }
+
+  .waitlist-form label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+  }
+
+  .waitlist-form input[type="email"] {
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    padding: 0.75em 0.9em;
+    border: 1px solid var(--ledger-line);
+    background: var(--card);
+    border-radius: 2px;
+    color: var(--ink);
+  }
+
+  .waitlist-form input[type="email"]::placeholder {
+    color: #9a9789;
+  }
+
+  .waitlist-form .submit-row {
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .form-note {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    margin-top: var(--space-2);
+  }
+
+  .form-success {
+    display: none;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    color: var(--index-teal);
+    border: 1px dashed var(--index-teal);
+    padding: var(--space-2);
+    max-width: 480px;
+    margin-top: var(--space-1);
+  }
+
+  .form-success.visible { display: block; }
+  .waitlist-form.hidden { display: none; }
+
+  /* ---------- Signature: Sorting Tray ---------- */
+
+  .tray-section .wrap {
+    max-width: 1080px;
+  }
+
+  .tray-intro {
+    max-width: 60ch;
+    margin-bottom: var(--space-4);
+  }
+
+  .tray-intro h2 {
+    font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+    margin: var(--space-1) 0 var(--space-2);
+  }
+
+  .tray-intro p {
+    color: var(--ink-soft);
+  }
+
+  .tray-stage {
+    display: grid;
+    grid-template-columns: 1fr auto 1.3fr;
+    gap: var(--space-3);
+    align-items: start;
+  }
+
+  @media (max-width: 760px) {
+    .tray-stage {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .stack-column, .result-column {
+    background: var(--paper-deep);
+    border: 1px solid var(--ledger-line);
+    padding: var(--space-3);
+  }
+
+  .stack-column {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stack-empty {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    margin-top: var(--space-2);
+    padding: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    text-align: center;
+    border: 1px dashed var(--ledger-line);
+  }
+
+  .stack-empty.visible { display: flex; }
+
+  .column-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    margin-bottom: var(--space-2);
+    display: block;
+  }
+
+  .arrow-column {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ledger-line);
+    font-size: 1.6rem;
+  }
+
+  @media (max-width: 760px) {
+    .arrow-column { transform: rotate(90deg); padding: var(--space-1) 0; }
+  }
+
+  .stack {
+    position: relative;
+    min-height: 300px;
+    transition: min-height 0.4s ease;
+  }
+
+  .stack.empty {
+    min-height: 0;
+  }
+
+  .doc-card {
+    background: var(--card);
+    border: 1px solid var(--ledger-line);
+    border-radius: 2px;
+    padding: var(--space-2);
+    box-shadow: 0 1px 2px rgba(32, 36, 31, 0.08);
+    position: relative;
+    margin-bottom: 10px;
+    transition: transform 0.6s ease, opacity 0.6s ease;
+  }
+
+  .doc-card .fname {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    word-break: break-all;
+    color: var(--ink);
+  }
+
+  .doc-card .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: var(--space-1);
+    min-height: 1.4em;
+  }
+
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    padding: 2px 7px;
+    border-radius: 2px;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+
+  .tag.visible { opacity: 1; transform: translateY(0); }
+
+  .tag.choice {
+    background: var(--index-teal);
+    color: var(--index-teal-ink);
+  }
+
+  .tag.noul {
+    background: var(--stamp);
+    color: #F5EDE9;
+  }
+
+  .tag.score {
+    background: transparent;
+    border: 1px solid var(--ledger-line);
+    color: var(--ink-soft);
+  }
+
+  .doc-card.processed {
+    opacity: 0;
+    transform: translateX(24px) scale(0.96);
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .result-column {
+    display: grid;
+    grid-template-rows: auto auto auto;
+    gap: var(--space-2);
+  }
+
+  .tray {
+    border: 1px solid var(--ledger-line);
+    background: var(--card);
+    padding: var(--space-2);
+    min-height: 88px;
+  }
+
+  .tray-title {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--space-1);
+    text-transform: uppercase;
+  }
+
+  .tray-items {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .tray-item {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-1);
+    font-size: 0.82rem;
+    padding: 6px 8px;
+    background: var(--paper);
+    border-left: 3px solid var(--index-teal);
+    opacity: 0;
+    transform: translateY(-4px);
+    animation: dropIn 0.5s ease forwards;
+  }
+
+  .tray-item .fname { font-family: var(--font-mono); font-size: 0.74rem; }
+  .tray-item .score { font-family: var(--font-mono); color: var(--ink-soft); }
+
+  @keyframes dropIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .tray-demo-note {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    margin-top: var(--space-2);
+  }
+
+  /* ---------- Problem section ---------- */
+
+  .problem-list {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+  }
+
+  .problem-item {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-top: 1px solid var(--ledger-line);
+  }
+
+  @media (max-width: 640px) {
+    .problem-item { grid-template-columns: 1fr; gap: var(--space-1); }
+  }
+
+  .problem-item .label {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    color: var(--index-teal);
+  }
+
+  .problem-item p {
+    margin: 0;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- How it works ---------- */
+
+  .mechanism-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+  }
+
+  @media (max-width: 760px) {
+    .mechanism-grid { grid-template-columns: 1fr; }
+  }
+
+  .mechanism-card {
+    background: var(--card);
+    border: 1px solid var(--ledger-line);
+    padding: var(--space-3);
+  }
+
+  .mechanism-card .kicker {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+
+  .mechanism-card h3 {
+    font-size: 1.25rem;
+    margin: var(--space-1) 0 var(--space-2);
+  }
+
+  .mechanism-card p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 0.94rem;
+  }
+
+  /* ---------- Platforms ---------- */
+
+  .platform-list {
+    margin-top: var(--space-4);
+    display: grid;
+    gap: 1px;
+    background: var(--ledger-line);
+    border: 1px solid var(--ledger-line);
+  }
+
+  .platform-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .platform-name {
+    font-family: var(--font-body);
+    font-weight: 600;
+  }
+
+  .platform-status {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 2px;
+  }
+
+  .platform-status.active {
+    background: var(--index-teal);
+    color: var(--index-teal-ink);
+  }
+
+  .platform-status.planned {
+    background: transparent;
+    border: 1px solid var(--ledger-line);
+    color: var(--ink-soft);
+  }
+
+  .platform-note {
+    margin-top: var(--space-3);
+    color: var(--ink-soft);
+    max-width: 60ch;
+  }
+
+  /* ---------- CTA ---------- */
+
+  .cta-section {
+    background: var(--paper-deep);
+  }
+
+  .cta-section .wrap {
+    text-align: left;
+  }
+
+  .cta-section h2 {
+    font-size: clamp(1.5rem, 3vw, 2.1rem);
+    margin-bottom: var(--space-2);
+  }
+
+  .cta-section .lead {
+    color: var(--ink-soft);
+    max-width: 50ch;
+    margin-bottom: var(--space-3);
+  }
+
+  /* ---------- Footer ---------- */
+
+  footer.site {
+    padding: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+</style>
+
+<div class="shell">
+  <nav class="tabnav" aria-label="セクション">
+    <a href="#problem" data-tab>課題</a>
+    <a href="#mechanism" data-tab>仕組み</a>
+    <a href="#platforms" data-tab>対応範囲</a>
+    <a href="#cta" data-tab>登録</a>
+  </nav>
+
+  <div>
+    <header class="site">
+      <div class="logo">Wakeru<small>わける / GOOGLE DRIVE 自動仕分け</small></div>
+      <a class="btn" href="#cta">ウェイトリストに登録</a>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap">
+          <p class="eyebrow">GOOGLE DRIVE 対応 / DROPBOX・ローカル対応予定</p>
+          <h1>書類を、<br>置くだけで、分ける。</h1>
+          <p class="lead">見積書、契約書、請求書。Google Drive に眠るファイルを、自動的に仕分けます。フォルダを指定するだけ。分類も、重複チェックも、保管の優先順位づけも、Wakeru が代わりに済ませます。</p>
+
+          <form class="waitlist-form" id="hero-form" novalidate>
+            <div class="field">
+              <label for="hero-email">会社のメールアドレス</label>
+              <input type="email" id="hero-email" name="email" placeholder="you@company.co.jp" required autocomplete="email">
+            </div>
+            <div class="submit-row">
+              <button type="submit" class="btn">ウェイトリストに登録する</button>
+            </div>
+          </form>
+          <div class="form-success" role="status" id="hero-success">登録しました。準備が整い次第、このメールアドレスにご案内します。</div>
+          <p class="form-note">まだ製品は準備中です。公開時に一番にお知らせします。</p>
+        </div>
+      </section>
+
+      <section class="tray-section" aria-labelledby="tray-heading">
+        <div class="wrap">
+          <div class="tray-intro">
+            <p class="eyebrow">デモ</p>
+            <h2 id="tray-heading">実際に、仕分けられていく様子です。</h2>
+            <p>これはデモです。実際の分類・判定は Google Drive 上のファイルに対して行われます。</p>
+          </div>
+
+          <div class="tray-stage" id="tray-stage">
+            <div class="stack-column">
+              <span class="column-label">未処理の書類</span>
+              <div class="stack" id="doc-stack"></div>
+              <div class="stack-empty" id="stack-empty">すべて仕分け済みです</div>
+            </div>
+            <div class="arrow-column" aria-hidden="true">→</div>
+            <div class="result-column">
+              <div class="tray" data-tray="urgent">
+                <div class="tray-title"><span>至急確認</span></div>
+                <div class="tray-items" id="tray-urgent"></div>
+              </div>
+              <div class="tray" data-tray="keep">
+                <div class="tray-title"><span>保管</span></div>
+                <div class="tray-items" id="tray-keep"></div>
+              </div>
+              <div class="tray" data-tray="archive">
+                <div class="tray-title"><span>アーカイブ提案</span></div>
+                <div class="tray-items" id="tray-archive"></div>
+              </div>
+            </div>
+          </div>
+          <p class="tray-demo-note">分類 → 重複・機密の確認 → 優先度の数値化、の順にトレイへ振り分けます。</p>
+        </div>
+      </section>
+
+      <section id="problem" aria-labelledby="problem-heading">
+        <div class="wrap">
+          <p class="eyebrow">課題</p>
+          <h2 id="problem-heading">バックオフィスの棚に、答えのないファイルが積み上がっていく。</h2>
+          <div class="problem-list">
+            <div class="problem-item">
+              <div class="label">見積書</div>
+              <p>見積書と契約書が同じフォルダに混ざっていて、探すのに毎回時間がかかる。</p>
+            </div>
+            <div class="problem-item">
+              <div class="label">重複</div>
+              <p>同じ請求書らしきファイルが3つある。どれが最新かわからない。</p>
+            </div>
+            <div class="problem-item">
+              <div class="label">放置</div>
+              <p>何年も開いていないファイルを、消していいのか判断できずに残っている。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="mechanism" aria-labelledby="mechanism-heading">
+        <div class="wrap">
+          <p class="eyebrow">仕組み</p>
+          <h2 id="mechanism-heading">3つのステップで、仕分けの根拠を残す。</h2>
+          <p style="max-width: 60ch; color: var(--ink-soft); margin-top: var(--space-2);">Wakeru は、ファイルひとつひとつに「分類」「真偽」「優先度」の3つの答えを出します。</p>
+
+          <div class="mechanism-grid">
+            <div class="mechanism-card">
+              <span class="kicker">STEP 1</span>
+              <h3>分類する</h3>
+              <p>見積書・契約書・請求書・議事録・その他。ファイルの中身を読み、あらかじめ決めたカテゴリのどれに当たるかを選びます。</p>
+            </div>
+            <div class="mechanism-card">
+              <span class="kicker">STEP 2</span>
+              <h3>見抜く</h3>
+              <p>同じ内容のファイルが重複していないか、氏名や金額などの機密情報が含まれていないかを判定します。</p>
+            </div>
+            <div class="mechanism-card">
+              <span class="kicker">STEP 3</span>
+              <h3>順位づける</h3>
+              <p>今すぐ確認すべきものから、もう保管しておくだけでよいものまで。内容の古さと重要度から優先度を数値化します。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="platforms" aria-labelledby="platforms-heading">
+        <div class="wrap">
+          <p class="eyebrow">対応範囲</p>
+          <h2 id="platforms-heading">場所を問わない仕分けを目指しています。</h2>
+          <p class="platform-note">最初の対応先は Google Drive です。次いで Dropbox、そしてお使いの PC のローカルフォルダにも対応を広げていきます。</p>
+
+          <div class="platform-list">
+            <div class="platform-row">
+              <span class="platform-name">Google Drive</span>
+              <span class="platform-status active">対応中</span>
+            </div>
+            <div class="platform-row">
+              <span class="platform-name">Dropbox</span>
+              <span class="platform-status planned">対応予定</span>
+            </div>
+            <div class="platform-row">
+              <span class="platform-name">ローカルフォルダ(PC)</span>
+              <span class="platform-status planned">対応予定</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="cta" class="cta-section" aria-labelledby="cta-heading">
+        <div class="wrap">
+          <p class="eyebrow">登録</p>
+          <h2 id="cta-heading">はじめの一歩は、フォルダをひとつ選ぶだけ。</h2>
+          <p class="lead">公開時にまず使っていただけるよう、ウェイトリストで受け付けています。</p>
+
+          <form class="waitlist-form" id="cta-form" novalidate>
+            <div class="field">
+              <label for="cta-email">会社のメールアドレス</label>
+              <input type="email" id="cta-email" name="email" placeholder="you@company.co.jp" required autocomplete="email">
+            </div>
+            <div class="submit-row">
+              <button type="submit" class="btn">ウェイトリストに登録する</button>
+            </div>
+          </form>
+          <div class="form-success" role="status" id="cta-success">登録しました。準備が整い次第、このメールアドレスにご案内します。</div>
+          <p class="form-note">他の方の登録メールが公開されることはありません。</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site">
+      <span>Wakeru — Google Drive の書類を、置くだけで分ける。</span>
+      <span>© 2026 Wakeru</span>
+    </footer>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- Waitlist forms ---------- */
+
+  function wireForm(formId, successId) {
+    var form = document.getElementById(formId);
+    var success = document.getElementById(successId);
+    if (!form || !success) return;
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var input = form.querySelector("input[type=email]");
+      if (!input.value || !input.checkValidity()) {
+        input.focus();
+        return;
+      }
+      form.classList.add("hidden");
+      success.classList.add("visible");
+    });
+  }
+
+  wireForm("hero-form", "hero-success");
+  wireForm("cta-form", "cta-success");
+
+  /* ---------- Tab nav scroll sync ---------- */
+
+  var tabs = Array.prototype.slice.call(document.querySelectorAll("[data-tab]"));
+  var sections = tabs
+    .map(function (tab) {
+      var id = tab.getAttribute("href").slice(1);
+      return document.getElementById(id);
+    })
+    .filter(Boolean);
+
+  if ("IntersectionObserver" in window && sections.length) {
+    var navObserver = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          var tab = tabs[sections.indexOf(entry.target)];
+          if (!tab) return;
+          if (entry.isIntersecting) {
+            tabs.forEach(function (t) { t.removeAttribute("aria-current"); });
+            tab.setAttribute("aria-current", "true");
+          }
+        });
+      },
+      { rootMargin: "-40% 0px -50% 0px", threshold: 0 }
+    );
+    sections.forEach(function (s) { navObserver.observe(s); });
+  }
+
+  /* ---------- Signature element: sorting tray ---------- */
+
+  var docs = [
+    { name: "見積書_2019下期.pdf", choice: "見積書", noul: null, score: 28, tray: "archive" },
+    { name: "契約書_A社_draft.docx", choice: "契約書", noul: "重複の疑いあり", score: 92, tray: "urgent" },
+    { name: "請求書_9月分_v2.pdf", choice: "請求書", noul: null, score: 81, tray: "urgent" },
+    { name: "議事録_定例MTG.docx", choice: "議事録", noul: null, score: 44, tray: "keep" },
+    { name: "見積書_B社_final.pdf", choice: "見積書", noul: "機密情報を含む", score: 67, tray: "keep" },
+    { name: "契約書_旧テンプレ.docx", choice: "契約書", noul: "重複の疑いあり", score: 19, tray: "archive" }
+  ];
+
+  var stack = document.getElementById("doc-stack");
+  var trayMap = {
+    urgent: document.getElementById("tray-urgent"),
+    keep: document.getElementById("tray-keep"),
+    archive: document.getElementById("tray-archive")
+  };
+
+  var cardEls = docs.map(function (doc, i) {
+    var el = document.createElement("div");
+    el.className = "doc-card";
+    el.style.zIndex = String(docs.length - i);
+    el.style.transform = "translateY(" + i * 6 + "px) rotate(" + (i % 2 === 0 ? -1 : 1) + "deg)";
+    el.innerHTML =
+      '<div class="fname">' + doc.name + '</div>' +
+      '<div class="tags">' +
+      '<span class="tag choice">' + doc.choice + '</span>' +
+      (doc.noul ? '<span class="tag noul">' + doc.noul + '</span>' : '') +
+      '<span class="tag score">優先度 ' + doc.score + '</span>' +
+      '</div>';
+    stack.appendChild(el);
+    return el;
+  });
+
+  function renderFinalState() {
+    cardEls.forEach(function (el) {
+      el.querySelectorAll(".tag").forEach(function (t) { t.classList.add("visible"); });
+      el.classList.add("processed");
+    });
+    docs.forEach(function (doc) {
+      appendTrayItem(doc, false);
+    });
+    stack.classList.add("empty");
+    var emptyNote = document.getElementById("stack-empty");
+    if (emptyNote) emptyNote.classList.add("visible");
+  }
+
+  function appendTrayItem(doc, animated) {
+    var container = trayMap[doc.tray];
+    if (!container) return;
+    var item = document.createElement("div");
+    item.className = "tray-item";
+    if (!animated) item.style.animation = "none";
+    if (!animated) item.style.opacity = "1";
+    if (!animated) item.style.transform = "none";
+    item.innerHTML =
+      '<span class="fname">' + doc.name + '</span>' +
+      '<span class="score">' + doc.score + '</span>';
+    container.appendChild(item);
+  }
+
+  function runSortSequence() {
+    var delay = 0;
+    var perCardDelay = 850;
+
+    docs.forEach(function (doc, i) {
+      var el = cardEls[i];
+
+      setTimeout(function () {
+        var choiceTag = el.querySelector(".tag.choice");
+        if (choiceTag) choiceTag.classList.add("visible");
+      }, delay + 150);
+
+      if (doc.noul) {
+        setTimeout(function () {
+          var noulTag = el.querySelector(".tag.noul");
+          if (noulTag) noulTag.classList.add("visible");
+        }, delay + 380);
+      }
+
+      setTimeout(function () {
+        var scoreTag = el.querySelector(".tag.score");
+        if (scoreTag) scoreTag.classList.add("visible");
+      }, delay + 560);
+
+      setTimeout(function () {
+        el.classList.add("processed");
+        appendTrayItem(doc, true);
+      }, delay + 750);
+
+      delay += perCardDelay;
+    });
+
+    setTimeout(function () {
+      stack.classList.add("empty");
+      var emptyNote = document.getElementById("stack-empty");
+      if (emptyNote) emptyNote.classList.add("visible");
+    }, delay + 200);
+  }
+
+  if (reduceMotion) {
+    renderFinalState();
+  } else if ("IntersectionObserver" in window) {
+    var traySection = document.getElementById("tray-stage");
+    var triggered = false;
+    var trayObserver = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting && !triggered) {
+            triggered = true;
+            runSortSequence();
+            trayObserver.disconnect();
+          }
+        });
+      },
+      { threshold: 0.35 }
+    );
+    trayObserver.observe(traySection);
+  } else {
+    renderFinalState();
+  }
+})();
+</script>
