@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wakeru — 書類を、置くだけで分ける。</title>
 <meta name="description" content="Google Drive に眠るファイルを、分類・重複チェック・優先度づけで自動的に仕分けます。まずはウェイトリストにご登録ください。">
 <style>
@@ -95,7 +100,18 @@
 
   @media (max-width: 900px) {
     .tabnav {
-      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      height: auto;
+      flex-direction: row;
+      justify-content: flex-start;
+      overflow-x: auto;
+      gap: 0;
+      padding: 0;
+      background: var(--paper);
+      border-right: none;
+      border-bottom: 1px solid var(--ledger-line);
     }
   }
 
@@ -111,6 +127,16 @@
     border-left: 3px solid transparent;
     transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
     white-space: nowrap;
+  }
+
+  @media (max-width: 900px) {
+    .tabnav a {
+      writing-mode: horizontal-tb;
+      border-left: none;
+      border-bottom: 3px solid transparent;
+      padding: var(--space-2) var(--space-3);
+      flex: 0 0 auto;
+    }
   }
 
   .tabnav a[aria-current="true"] {
@@ -285,6 +311,19 @@
     max-width: 480px;
     margin-top: var(--space-1);
   }
+
+  .form-error {
+    display: none;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    color: var(--stamp);
+    border: 1px dashed var(--stamp);
+    padding: var(--space-2);
+    max-width: 480px;
+    margin-top: var(--space-1);
+  }
+
+  .form-error.visible { display: block; }
 
   .form-success.visible { display: block; }
   .waitlist-form.hidden { display: none; }
@@ -614,6 +653,48 @@
     max-width: 60ch;
   }
 
+  /* ---------- FAQ ---------- */
+
+  .faq-list {
+    display: grid;
+    gap: 0;
+    margin-top: var(--space-4);
+  }
+
+  .faq-item {
+    padding: var(--space-3) 0;
+    border-top: 1px solid var(--ledger-line);
+  }
+
+  .faq-item:last-child {
+    border-bottom: 1px solid var(--ledger-line);
+  }
+
+  .faq-item h3 {
+    font-family: var(--font-body);
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 0 0 var(--space-1);
+  }
+
+  .faq-item h3::before {
+    content: "Q. ";
+    color: var(--index-teal);
+    font-family: var(--font-mono);
+  }
+
+  .faq-item p {
+    margin: 0;
+    color: var(--ink-soft);
+    max-width: 68ch;
+  }
+
+  .faq-item p::before {
+    content: "A. ";
+    color: var(--ink-soft);
+    font-family: var(--font-mono);
+  }
+
   /* ---------- CTA ---------- */
 
   .cta-section {
@@ -648,12 +729,15 @@
     gap: var(--space-1);
   }
 </style>
+</head>
+<body>
 
 <div class="shell">
   <nav class="tabnav" aria-label="セクション">
     <a href="#problem" data-tab>課題</a>
     <a href="#mechanism" data-tab>仕組み</a>
     <a href="#platforms" data-tab>対応範囲</a>
+    <a href="#faq" data-tab>疑問</a>
     <a href="#cta" data-tab>登録</a>
   </nav>
 
@@ -680,7 +764,29 @@
             </div>
           </form>
           <div class="form-success" role="status" id="hero-success">登録しました。準備が整い次第、このメールアドレスにご案内します。</div>
+          <div class="form-error" role="alert" id="hero-error">登録に失敗しました。時間をおいて再度お試しください。</div>
           <p class="form-note">まだ製品は準備中です。公開時に一番にお知らせします。</p>
+        </div>
+      </section>
+
+      <section id="problem" aria-labelledby="problem-heading">
+        <div class="wrap">
+          <p class="eyebrow">課題</p>
+          <h2 id="problem-heading">バックオフィスの棚に、答えのないファイルが積み上がっていく。</h2>
+          <div class="problem-list">
+            <div class="problem-item">
+              <div class="label">見積書</div>
+              <p>見積書と契約書が同じフォルダに混ざっていて、探すのに毎回時間がかかる。</p>
+            </div>
+            <div class="problem-item">
+              <div class="label">重複</div>
+              <p>同じ請求書らしきファイルが3つある。どれが最新かわからない。</p>
+            </div>
+            <div class="problem-item">
+              <div class="label">放置</div>
+              <p>何年も開いていないファイルを、消していいのか判断できずに残っている。</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -715,27 +821,6 @@
             </div>
           </div>
           <p class="tray-demo-note">分類 → 重複・機密の確認 → 優先度の数値化、の順にトレイへ振り分けます。</p>
-        </div>
-      </section>
-
-      <section id="problem" aria-labelledby="problem-heading">
-        <div class="wrap">
-          <p class="eyebrow">課題</p>
-          <h2 id="problem-heading">バックオフィスの棚に、答えのないファイルが積み上がっていく。</h2>
-          <div class="problem-list">
-            <div class="problem-item">
-              <div class="label">見積書</div>
-              <p>見積書と契約書が同じフォルダに混ざっていて、探すのに毎回時間がかかる。</p>
-            </div>
-            <div class="problem-item">
-              <div class="label">重複</div>
-              <p>同じ請求書らしきファイルが3つある。どれが最新かわからない。</p>
-            </div>
-            <div class="problem-item">
-              <div class="label">放置</div>
-              <p>何年も開いていないファイルを、消していいのか判断できずに残っている。</p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -788,6 +873,28 @@
         </div>
       </section>
 
+      <section id="faq" aria-labelledby="faq-heading">
+        <div class="wrap">
+          <p class="eyebrow">疑問</p>
+          <h2 id="faq-heading">登録の前に、気になることへお答えします。</h2>
+
+          <div class="faq-list">
+            <div class="faq-item">
+              <h3>Google Drive にはすでにファイルを整理する機能がありますが、何が違うのですか。</h3>
+              <p>Google の整理機能は、直近のファイルをフォルダへ振り分ける提案が中心です。Wakeru はそれに加えて、何年も放置されたファイルの棚卸し、重複ファイルの検出、機密情報の有無、保管の優先度づけまでを扱います。すでに散らかってしまったファイルを片づけたい方向けの仕組みです。</p>
+            </div>
+            <div class="faq-item">
+              <h3>Google Drive の中身を AI に読ませて、情報が外に漏れませんか。</h3>
+              <p>分類・重複・優先度の判定に必要な範囲でファイルの内容を確認しますが、判定結果の保存や利用範囲は今後正式に定めて公開します。機密情報を含むと判定されたファイルは、自動で移動や削除をせず、必ず確認を求めます。</p>
+            </div>
+            <div class="faq-item">
+              <h3>導入の手間はどれくらいかかりますか。</h3>
+              <p>フォルダをひとつ指定するだけで始められる設計を目指しています。既存のフォルダ構成を作り直したり、ファイルを移行したりする必要はありません。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="cta" class="cta-section" aria-labelledby="cta-heading">
         <div class="wrap">
           <p class="eyebrow">登録</p>
@@ -804,6 +911,7 @@
             </div>
           </form>
           <div class="form-success" role="status" id="cta-success">登録しました。準備が整い次第、このメールアドレスにご案内します。</div>
+          <div class="form-error" role="alert" id="cta-error">登録に失敗しました。時間をおいて再度お試しください。</div>
           <p class="form-note">他の方の登録メールが公開されることはありません。</p>
         </div>
       </section>
@@ -824,9 +932,36 @@
 
   /* ---------- Waitlist forms ---------- */
 
-  function wireForm(formId, successId) {
+  // TODO: Tally でフォームを作成後、そのフォームIDに差し替える。
+  // 例: https://tally.so/forms/AbCdEf の "AbCdEf" 部分。
+  // 未設定のままだと登録メールアドレスがどこにも保存されないため、
+  // 広告出稿・公開前に必ず設定すること。
+  var TALLY_FORM_ID = "";
+
+  function submitToTally(email) {
+    if (!TALLY_FORM_ID) {
+      console.warn(
+        "[Wakeru] TALLY_FORM_ID が未設定です。登録されたメールアドレスは保存されていません: " + email
+      );
+      return Promise.reject(new Error("TALLY_FORM_ID is not configured"));
+    }
+    return fetch("https://tally.so/api/forms/" + TALLY_FORM_ID + "/submissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        // Tally 側のフィールドキーは実際のフォーム作成後に確認して合わせる。
+        fields: [{ key: "email", value: email }]
+      })
+    }).then(function (res) {
+      if (!res.ok) throw new Error("Tally responded with " + res.status);
+      return res;
+    });
+  }
+
+  function wireForm(formId, successId, errorId) {
     var form = document.getElementById(formId);
     var success = document.getElementById(successId);
+    var error = document.getElementById(errorId);
     if (!form || !success) return;
 
     form.addEventListener("submit", function (e) {
@@ -836,13 +971,25 @@
         input.focus();
         return;
       }
-      form.classList.add("hidden");
-      success.classList.add("visible");
+      var submitBtn = form.querySelector("button[type=submit]");
+      if (submitBtn) submitBtn.disabled = true;
+      if (error) error.classList.remove("visible");
+
+      submitToTally(input.value)
+        .then(function () {
+          form.classList.add("hidden");
+          success.classList.add("visible");
+        })
+        .catch(function (err) {
+          console.error("[Wakeru] ウェイトリスト登録の送信に失敗しました。", err);
+          if (submitBtn) submitBtn.disabled = false;
+          if (error) error.classList.add("visible");
+        });
     });
   }
 
-  wireForm("hero-form", "hero-success");
-  wireForm("cta-form", "cta-success");
+  wireForm("hero-form", "hero-success", "hero-error");
+  wireForm("cta-form", "cta-success", "cta-error");
 
   /* ---------- Tab nav scroll sync ---------- */
 
@@ -855,16 +1002,27 @@
     .filter(Boolean);
 
   if ("IntersectionObserver" in window && sections.length) {
+    var intersecting = new Set();
+
     var navObserver = new IntersectionObserver(
       function (entries) {
         entries.forEach(function (entry) {
-          var tab = tabs[sections.indexOf(entry.target)];
-          if (!tab) return;
           if (entry.isIntersecting) {
-            tabs.forEach(function (t) { t.removeAttribute("aria-current"); });
-            tab.setAttribute("aria-current", "true");
+            intersecting.add(entry.target);
+          } else {
+            intersecting.delete(entry.target);
           }
         });
+
+        tabs.forEach(function (t) { t.removeAttribute("aria-current"); });
+
+        // 複数セクションが同時に交差範囲へ入っている場合は、
+        // ページ上でもっとも上にあるセクションを現在地として採用する。
+        var current = sections.find(function (s) { return intersecting.has(s); });
+        if (current) {
+          var tab = tabs[sections.indexOf(current)];
+          if (tab) tab.setAttribute("aria-current", "true");
+        }
       },
       { rootMargin: "-40% 0px -50% 0px", threshold: 0 }
     );
@@ -994,3 +1152,5 @@
   }
 })();
 </script>
+</body>
+</html>
