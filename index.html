@@ -716,6 +716,25 @@
     margin-bottom: var(--space-3);
   }
 
+  .waitlist-embed {
+    max-width: 560px;
+    margin-bottom: var(--space-2);
+  }
+
+  /* 高さは Tally の自動調整で上書きされる。効かない場合でも全体が収まる値にしておく。 */
+  .waitlist-embed iframe {
+    display: block;
+    width: 100%;
+    height: 960px;
+    border: 0;
+  }
+
+  @media (max-width: 600px) {
+    .waitlist-embed iframe { height: 1180px; }
+  }
+
+  .cta-section .form-note a { color: var(--index-teal); }
+
   /* ---------- Footer ---------- */
 
   footer.site {
@@ -754,7 +773,7 @@
           <h1>渡すだけで、<br>AIエージェントが分ける。</h1>
           <p class="lead">フォルダを渡すだけで、AIエージェントが仕分けます。見積書、契約書、請求書。Google Drive に眠るファイルを読み、分類も、重複チェックも、放置ファイルの棚卸しも、保管の優先順位づけも、Wakeru が代わりに済ませます。判断に迷うものや機密を含むものだけ、あなたに確認します。</p>
 
-          <a class="btn" data-waitlist href="https://tally.so/r/PdMY25">ウェイトリストに登録する</a>
+          <a class="btn" href="#cta">ウェイトリストに登録する</a>
           <p class="form-note">まだ製品は準備中です。公開時に一番にお知らせします。</p>
         </div>
       </section>
@@ -891,7 +910,10 @@
           <h2 id="cta-heading">はじめの一歩は、フォルダをひとつ選ぶだけ。</h2>
           <p class="lead">公開時にまず使っていただけるよう、ウェイトリストで受け付けています。</p>
 
-          <a class="btn" data-waitlist href="https://tally.so/r/PdMY25">ウェイトリストに登録する</a>
+          <div class="waitlist-embed">
+            <iframe id="waitlist-form" data-tally-src="https://tally.so/embed/PdMY25?alignLeft=1&hideTitle=1&transparentBackground=1&dynamicHeight=1" width="100%" height="960" frameborder="0" marginheight="0" marginwidth="0" title="Wakeru ウェイトリスト登録"></iframe>
+          </div>
+          <noscript><p class="form-note"><a href="https://tally.so/r/PdMY25">こちらからウェイトリストにご登録ください。</a></p></noscript>
           <p class="form-note">他の方の登録メールが公開されることはありません。</p>
         </div>
       </section>
@@ -910,20 +932,30 @@
 
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /* ---------- Waitlist links ---------- */
+  /* ---------- Waitlist embed ---------- */
 
-  // 登録は Tally フォーム (https://tally.so/r/PdMY25) で受け付ける。
+  // 登録は Tally フォーム (https://tally.so/r/PdMY25) を埋め込んで受け付ける。
   // 広告経由の UTM パラメータを Tally の非表示フィールドへ引き継ぐ。
   var UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term"];
   var pageParams = new URLSearchParams(window.location.search);
-  Array.prototype.forEach.call(document.querySelectorAll("a[data-waitlist]"), function (link) {
-    var url = new URL(link.href);
+  var embed = document.getElementById("waitlist-form");
+  if (embed) {
+    var embedUrl = new URL(embed.getAttribute("data-tally-src"));
     UTM_KEYS.forEach(function (key) {
       var value = pageParams.get(key);
-      if (value) url.searchParams.set(key, value);
+      if (value) embedUrl.searchParams.set(key, value);
     });
-    link.href = url.toString();
-  });
+    embed.setAttribute("data-tally-src", embedUrl.toString());
+
+    // 表示は src の直接設定で確保し、高さの自動調整は Tally の embed.js に任せる。
+    embed.src = embed.getAttribute("data-tally-src");
+    var tallyScript = document.createElement("script");
+    tallyScript.src = "https://tally.so/widgets/embed.js";
+    tallyScript.onload = function () {
+      if (typeof Tally !== "undefined") Tally.loadEmbeds();
+    };
+    document.body.appendChild(tallyScript);
+  }
 
   /* ---------- Tab nav scroll sync ---------- */
 
