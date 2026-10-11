@@ -754,17 +754,7 @@
           <h1>書類を、<br>置くだけで、分ける。</h1>
           <p class="lead">見積書、契約書、請求書。Google Drive に眠るファイルを、自動的に仕分けます。フォルダを指定するだけ。分類も、重複チェックも、保管の優先順位づけも、Wakeru が代わりに済ませます。</p>
 
-          <form class="waitlist-form" id="hero-form" novalidate>
-            <div class="field">
-              <label for="hero-email">会社のメールアドレス</label>
-              <input type="email" id="hero-email" name="email" placeholder="you@company.co.jp" required autocomplete="email">
-            </div>
-            <div class="submit-row">
-              <button type="submit" class="btn">ウェイトリストに登録する</button>
-            </div>
-          </form>
-          <div class="form-success" role="status" id="hero-success">登録しました。準備が整い次第、このメールアドレスにご案内します。</div>
-          <div class="form-error" role="alert" id="hero-error">登録に失敗しました。時間をおいて再度お試しください。</div>
+          <a class="btn" data-waitlist href="https://tally.so/r/PdMY25">ウェイトリストに登録する</a>
           <p class="form-note">まだ製品は準備中です。公開時に一番にお知らせします。</p>
         </div>
       </section>
@@ -901,17 +891,7 @@
           <h2 id="cta-heading">はじめの一歩は、フォルダをひとつ選ぶだけ。</h2>
           <p class="lead">公開時にまず使っていただけるよう、ウェイトリストで受け付けています。</p>
 
-          <form class="waitlist-form" id="cta-form" novalidate>
-            <div class="field">
-              <label for="cta-email">会社のメールアドレス</label>
-              <input type="email" id="cta-email" name="email" placeholder="you@company.co.jp" required autocomplete="email">
-            </div>
-            <div class="submit-row">
-              <button type="submit" class="btn">ウェイトリストに登録する</button>
-            </div>
-          </form>
-          <div class="form-success" role="status" id="cta-success">登録しました。準備が整い次第、このメールアドレスにご案内します。</div>
-          <div class="form-error" role="alert" id="cta-error">登録に失敗しました。時間をおいて再度お試しください。</div>
+          <a class="btn" data-waitlist href="https://tally.so/r/PdMY25">ウェイトリストに登録する</a>
           <p class="form-note">他の方の登録メールが公開されることはありません。</p>
         </div>
       </section>
@@ -930,66 +910,20 @@
 
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /* ---------- Waitlist forms ---------- */
+  /* ---------- Waitlist links ---------- */
 
-  // TODO: Tally でフォームを作成後、そのフォームIDに差し替える。
-  // 例: https://tally.so/forms/AbCdEf の "AbCdEf" 部分。
-  // 未設定のままだと登録メールアドレスがどこにも保存されないため、
-  // 広告出稿・公開前に必ず設定すること。
-  var TALLY_FORM_ID = "";
-
-  function submitToTally(email) {
-    if (!TALLY_FORM_ID) {
-      console.warn(
-        "[Wakeru] TALLY_FORM_ID が未設定です。登録されたメールアドレスは保存されていません: " + email
-      );
-      return Promise.reject(new Error("TALLY_FORM_ID is not configured"));
-    }
-    return fetch("https://tally.so/api/forms/" + TALLY_FORM_ID + "/submissions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        // Tally 側のフィールドキーは実際のフォーム作成後に確認して合わせる。
-        fields: [{ key: "email", value: email }]
-      })
-    }).then(function (res) {
-      if (!res.ok) throw new Error("Tally responded with " + res.status);
-      return res;
+  // 登録は Tally フォーム (https://tally.so/r/PdMY25) で受け付ける。
+  // 広告経由の UTM パラメータを Tally の非表示フィールドへ引き継ぐ。
+  var UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term"];
+  var pageParams = new URLSearchParams(window.location.search);
+  Array.prototype.forEach.call(document.querySelectorAll("a[data-waitlist]"), function (link) {
+    var url = new URL(link.href);
+    UTM_KEYS.forEach(function (key) {
+      var value = pageParams.get(key);
+      if (value) url.searchParams.set(key, value);
     });
-  }
-
-  function wireForm(formId, successId, errorId) {
-    var form = document.getElementById(formId);
-    var success = document.getElementById(successId);
-    var error = document.getElementById(errorId);
-    if (!form || !success) return;
-
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      var input = form.querySelector("input[type=email]");
-      if (!input.value || !input.checkValidity()) {
-        input.focus();
-        return;
-      }
-      var submitBtn = form.querySelector("button[type=submit]");
-      if (submitBtn) submitBtn.disabled = true;
-      if (error) error.classList.remove("visible");
-
-      submitToTally(input.value)
-        .then(function () {
-          form.classList.add("hidden");
-          success.classList.add("visible");
-        })
-        .catch(function (err) {
-          console.error("[Wakeru] ウェイトリスト登録の送信に失敗しました。", err);
-          if (submitBtn) submitBtn.disabled = false;
-          if (error) error.classList.add("visible");
-        });
-    });
-  }
-
-  wireForm("hero-form", "hero-success", "hero-error");
-  wireForm("cta-form", "cta-success", "cta-error");
+    link.href = url.toString();
+  });
 
   /* ---------- Tab nav scroll sync ---------- */
 
